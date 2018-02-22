@@ -32,12 +32,15 @@
 %
 % Name       : Rody P.S. Oldenhuis
 % E-mail     : oldenhuis@gmail.com    (personal)
-%              oldenhuis@luxspace.lu  (professional)
 % Affiliation: LuxSpace sàrl
 % Licence    : BSD
 
 % Changelog
 %{
+2016/February/22 (Rody Oldenhuis)
+- Cleaned up the code style
+- Fixed warning regarding the I/O argument count checks
+
 2014/February/28 (Rody Oldenhuis) (Pick of the week!)
 - Added 'Decennia'
 - Added checks on IO arguments
@@ -62,13 +65,22 @@ function out = seconds2human(secs, varargin)
     % If you find this work useful, please consider a donation:
     % https://www.paypal.me/RodyO/3.5
     
-    % Some error checking
-    error(nargchk(1,2,nargin, 'struct'));
-    error(nargoutchk(0,1,nargout, 'struct'));
+    % Check I/O arg counts
+    % NOTE: (Rody Oldenhuis) R2011b introduced different argcheck mechanism
+    % The following trainwreck is the only way to maintain this basic 
+    % functionality, while addressing ALL related warnings in ALL versions 
+    % of MATLAB.
+    if verLessThan('MATLAB', '7.13')
+        error(   nargchk(1,2,nargin ,'struct')); %#ok<*NCHKN>
+        error(nargoutchk(0,1,nargout,'struct'));  %#ok<*NCHKE>       
+    else
+        narginchk(1,2);
+        nargoutchk(0,1);   
+    end
     
     assert(isnumeric(secs) && all(isfinite(secs(:))) && all(imag(secs(:))==0) && all(secs(:)>=0),...
-        'seconds2human:seconds_mustbe_numeric', ...
-        'Input argument ''secs'' must be finite, real, and all-positive.');
+           [mfilename ':seconds_mustbe_numeric'], ...
+           'Input argument ''secs'' must be finite, real, and all-positive.');
     
     % Define some intuitive variables
     Seconds   = round(1                 );
@@ -84,11 +96,11 @@ function out = seconds2human(secs, varargin)
     
     % Put these into an array, and define associated strings
     units = [Millennia, Centuries, Decennia, Years, Months, Weeks, ...
-        Days, Hours, Minutes, Seconds];
+             Days, Hours, Minutes, Seconds];
     singles = {'millennium'; 'century'; 'decennium'; 'year'; 'month'; ...
-        'week'; 'day'; 'hour'; 'minute'; 'second'};
+               'week'; 'day'; 'hour'; 'minute'; 'second'};
     plurals = {'millennia' ; 'centuries'; 'decennia'; 'years'; 'months'; ...
-        'weeks'; 'days'; 'hours'; 'minutes'; 'seconds'};
+               'weeks'; 'days'; 'hours'; 'minutes'; 'seconds'};
     
     % Cut off all decimals from the given number of seconds    
     secs = round(secs);
@@ -96,19 +108,21 @@ function out = seconds2human(secs, varargin)
     % Parse any second argument
     short = true;
     if (nargin > 1)
-        % Extract argument
+        
+        % Check argument's type and content
         short = varargin{1};
-        % Check its type and content
-        assert(ischar(short),...
-            'seconds2human:argument_type_incorrect', ...
-            'The second argument must be of type ''char''; got ''%s''.', class(short));
+        assert(ischar(short), ...
+               [mfilename ':argument_type_incorrect'], ...
+               'The second argument must be of type ''char''; got ''%s''.',...
+               class(short));
+          
         % Check its content
         switch lower(short)
             case 'full' , short = false;
             case 'short', short = true;
             otherwise
-                error('seconds2human:short_format_incorrect',...
-                    'The second argument must be either ''short'' or ''full''.');
+                error([mfilename ':short_format_incorrect'],...
+                      'The second argument must be either ''short'' or ''full''.');
         end
     end
     
@@ -124,11 +138,12 @@ function out = seconds2human(secs, varargin)
         secsj   = secs(jj);
         counter = 0;
         if short, string = 'About ';
-        else      string = '';
+        else,     string = '';
         end
         
         % Possibly quick exit
-        if (secsj < 1), string = 'Less than one second.'; end
+        if (secsj < 1)
+            string = 'Less than one second.'; end
         
         % Build string for j-th amount of seconds
         for ii = 1:length(units)
@@ -153,13 +168,13 @@ function out = seconds2human(secs, varargin)
                     string = [string, '.']; break, end %#ok<AGROW>
                 
                 % Determine whether the ending should be a period (.) or a comma (,)
+                ending = '.';
                 if (rem(secsj, units(ii)) > 0)
                     if short, ending = ' and ';
-                    else ending = ', ';
+                    else,     ending = ', ';
                     end
-                else ending = '.';
                 end
-                string = [string, ending];%#ok<AGROW>
+                string = [string ending]; %#ok<AGROW>
                 
             end
             
